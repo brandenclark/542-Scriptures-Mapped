@@ -3,11 +3,6 @@
     long: true
 */
 /*global console*/
-/*property
-    books, forEach, getElementById, hash, id, init, innerHTML, length, log,
-    maxBookId, minBookId, onHashChanged, onerror, onload, open, parse, push,
-    responseText, send, slice, split, status, substring
-*/
 
 const Scriptures = (function () {
     "use strict";
