@@ -23,10 +23,11 @@ const Scriptures = (function () {
 
     // PRIVATE METHOD DECLARATONS
     let ajax;
+    let bookChapterValid;
     let cacheBooks;
     let init;
     let navigateBook;
-    let navigateBookChapter;
+    let navigateChapter;
     let navigateHome;
     let onHashChanged;
 
@@ -54,6 +55,11 @@ const Scriptures = (function () {
 
         request.send();
     };
+
+    bookChapterValid = function(bookId, chapterId) {
+        return true;
+        //needs work
+    }
 
     cacheBooks = function(callback) {
         volumes.forEach(function (volume) {
@@ -99,8 +105,15 @@ const Scriptures = (function () {
         console.log(bookId);
     };
 
-    navigateBookChapter = function (bookId, chapterId) {
-        console.log(bookId + chapterId);
+    navigateChapter = function (bookId, chapterId) {
+        if (bookId !== undefined) {
+            let book = books[bookId];
+            let volume = volumes[book.parentBookId - 1];
+
+            // ajax()
+
+            document.getElementById("scriptures").innerHTML = "<div>Chapter " + chapterId + "</div>";
+        }
     };
 
     navigateHome = function (volumeId) {
@@ -140,16 +153,24 @@ const Scriptures = (function () {
             } else {
                 navigateHome(volumeId);
             }
-        } else if (ids.length === 2) {
+        } else if (ids.length >= 2) {
             let bookId = Number(ids[1]);
 
             if (books[bookId] === undefined) {
                 navigateHome();
             } else {
-                navigateBook(bookId);
+                if (ids.length === 2) {
+                    navigateBook(bookId);
+                } else {
+                    let chapterId = Number(ids[2]);
+
+                    if (bookChapterValid(bookId, chapterId)) {
+                        navigateChapter(bookId, chapterId);
+                    } else {
+                        navigateHome();
+                    }
+                }
             }
-        } else {
-            navigateBookChapter();
         }
     };
 
