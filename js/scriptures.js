@@ -1,8 +1,16 @@
+/*property
+    books, forEach, fullName, getElementById, gridName, hash, id, init,
+    innerHTML, length, log, maxBookId, minBookId, onHashChanged, onerror,
+    onload, open, parse, push, responseText, send, slice, split, status,
+    substring
+*/
+/*global
+    console
+*/
 /*jslint
     browser: true
     long: true
 */
-/*global console*/
 
 const Scriptures = (function () {
     "use strict";
@@ -96,13 +104,23 @@ const Scriptures = (function () {
     };
 
     navigateHome = function (volumeId) {
+        let navContents = "<div id=\"scripnav\">";
 
-        document.getElementById("scriptures").innerHTML =
-            "<div>The Old Testament</div>" +
-            "<div>The New Testament</div>" +
-            "<div>The Book of Mormon</div>" +
-            "<div>The Pearl of Great Price</div>" +
-            volumeId;
+        volumes.forEach(function (volume) {
+            if (volumeId === undefined || volumeId === volume.id) {
+
+                navContents += "<div id=\"volume\"><a name=\"v" + volume.id + "\"/><h5>" +
+                volume.fullName + "</h5></div><div id=\"books\">";
+
+                volume.books.forEach(function (book) {
+                    navContents += "<a class=\"btn\" id\"" + book.id + "\" href=\"#" +
+                    volume.id + ":" + book.id + "\">" + book.gridName + "</a>";
+                });
+                navContents += "<br /><br /></div>";
+            }
+        });
+
+        document.getElementById("scriptures").innerHTML = navContents;
     };
 
     onHashChanged = function () {
