@@ -20,10 +20,13 @@ const Scriptures = (function () {
     /*---------------------------------------------------------------------------
         CONSTANTS
     */
+    const CROSS_FADE_OPACITY = .4
+    const FADE_TIME = 250;
     const INDEX_PLACENAME = 2;
     const INDEX_LATITUDE = 3;
     const INDEX_LONGITUDE = 4;
     const INDEX_PLACE_FLAG = 11;
+    const SLIDE_ANIMATION = 1000;
     const LAT_LON_PARSER = /\((.*),'(.*)',(.*),(.*),(.*),(.*),(.*),(.*),(.*),(.*),'(.*)'\)/;
     const MAX_RETRY_DELAY = 5000;
     const SCRIPTURES_URL = "https://scriptures.byu.edu/mapscrip/mapgetscrip.php";
@@ -31,7 +34,9 @@ const Scriptures = (function () {
     /*---------------------------------------------------------------------------
         PRIVATE VARIABLES
     */
+    let animate = true;
     let books;
+    let direction = "next";
     let gmMarkers = [];
     let retryDelay = 500;
     let volumes;
@@ -42,14 +47,19 @@ const Scriptures = (function () {
     let addMarker;
     let ajax;
     let alterMarkerTooltip;
+    let animateChapterNavigation;
+    let animateCrossfade;
+    let animationCleanUp;
     let bookChapterValid;
     let cacheBooks;
     let clearMarkers;
+    let createScriptureDiv;
     let encodedScriptureUrlParameters;
     let getScriptureCallBack;
     let getScriptureFailed;
     let hash;
     let init;
+    let loadContent;
     let navigateBook;
     let navigateChapter;
     let navigateHome;
@@ -124,6 +134,35 @@ const Scriptures = (function () {
         }
     };
 
+    animateChapterNavigation = function (el) {
+        if (direction == "prev") {
+            //called by previous
+            $('#old').addClass("behind_map", SLIDE_ANIMATION);
+            $(el).addClass("scriptures").removeClass("offscreen", SLIDE_ANIMATION);
+        }
+        else {
+            //called by next
+            $("#old").addClass("offscreen", SLIDE_ANIMATION)
+            $(el).addClass("scriptures").removeClass("behind_map", SLIDE_ANIMATION);
+        }
+
+        animationCleanUp(el);
+    };
+
+    animateCrossfade = function (content, div) {
+        $(`#${div}`).animate({ 'opacity': CROSS_FADE_OPACITY }, FADE_TIME, function () {
+            $(this).html(content).animate({ 'opacity': 1 }, FADE_TIME);
+        });
+    };
+
+    animationCleanUp = function (el) {
+        setTimeout(() => {
+            $("#old").remove();
+            el.id = "old";
+            animate = true;
+        }, SLIDE_ANIMATION)
+    };
+
     bookChapterValid = function (bookId, chapter) {
         let book = books[bookId];
 
@@ -164,6 +203,18 @@ const Scriptures = (function () {
         gmMarkers = [];
     };
 
+    createScriptureDiv = function (chapterHtml, direction) {
+        animate = false;
+        el = document.createElement("div");
+        el.id = "new";
+        //easy direction change
+        el.classList.add((direction === "prev") ? "offscreen" : "behind_map");
+        loadContent(el, chapterHtml);
+        $("#scriptures").append(el);
+
+        return el;
+    }
+
     encodedScriptureUrlParameters = function (bookId, chapter, verses, isJst) {
         if (bookId !== undefined && chapter !== undefined) {
             let options = "";
@@ -180,10 +231,12 @@ const Scriptures = (function () {
     };
 
     getScriptureCallBack = function (chapterHtml, bookId, chapter) {
-        document.getElementById("scriptures").innerHTML = chapterHtml;
-
-        setupMarkers();
+        //create new div(chapterHtml, direction);
+        el = createScriptureDiv(chapterHtml, direction);
+        // document.getElementById("old").innerHTML = chapterHtml;
         setupChapterNavigation(bookId, chapter);
+        animateChapterNavigation(el);
+        setupMarkers();
         google.maps.event.addListener(map, 'idle', alterMarkerTooltip);
     };
 
@@ -192,21 +245,28 @@ const Scriptures = (function () {
     };
 
     hash = function (volumeId, bookId, chapter) {
-        let hashValue = "#";
+        if (animate) {
+            let hashValue = "#";
 
-        if (volumeId !== undefined) {
-            hashValue += volumeId;
+            if (volumeId !== undefined) {
+                hashValue += volumeId;
 
-            if (bookId !== undefined) {
-                hashValue += `:${bookId}`;
+                if (bookId !== undefined) {
+                    hashValue += `:${bookId}`;
 
-                if (chapter !== undefined) {
-                    hashValue += `:${chapter}`;
+                    if (chapter !== undefined) {
+                        hashValue += `:${chapter}`;
+                    }
                 }
             }
-        }
+            if (location.hash.lastIndexOf(':') > 2) {
+                direction = (hashValue > location.hash) ? "next" : "prev";
+            } else {
+                direction = "next";
+            }
 
-        location.hash = hashValue;
+            location.hash = hashValue;
+        }
     };
 
     init = function (callback) {
@@ -231,6 +291,10 @@ const Scriptures = (function () {
         });
     };
 
+    loadContent = function (element, content) {
+        element.innerHTML = content
+    };
+
     navigateBook = function (bookId) {
         let book = books[bookId];
         let navContents = "<div id=\"scripnav\">";
@@ -244,7 +308,7 @@ const Scriptures = (function () {
 
         navContents += "<br /><br /></div>";
 
-        document.getElementById("scriptures").innerHTML = navContents;
+        animateCrossfade(navContents, "old");
     };
 
     navigateChapter = function (bookId, chapter) {
@@ -270,7 +334,7 @@ const Scriptures = (function () {
             }
         });
 
-        document.getElementById("scriptures").innerHTML = navContents;
+        animateCrossfade(navContents, "old");
     };
 
     nextChapter = function (bookId, chapter) {
@@ -373,7 +437,7 @@ const Scriptures = (function () {
 
         breadcrumb += '</div>'
 
-        document.getElementById("crumb").innerHTML = breadcrumb;
+        animateCrossfade(breadcrumb, "crumb");
 
     };
 
@@ -392,7 +456,6 @@ const Scriptures = (function () {
         }
 
         if (gmMarkers.length === 1 || zoomMarker) {
-            // let zoom =
             map.setZoom(10);
         }
     };
@@ -420,7 +483,7 @@ const Scriptures = (function () {
         }
 
         if (navIcons) {
-            document.querySelector("div[class^=\"navheading\"]").innerHTML += "<div class=\"navicons\">" + navIcons + "</div>";
+            document.querySelector(`#new div[class^=\"navheading\"]`).innerHTML += "<div class=\"navicons\">" + navIcons + "</div>";
         }
     };
 
@@ -437,7 +500,7 @@ const Scriptures = (function () {
 
             clearMarkers();
 
-            document.querySelectorAll("a[onclick^=\"showLocation(\"]").forEach(function (element) {
+            document.querySelectorAll("#new a[onclick^=\"showLocation(\"]").forEach(function (element) {
                 let matches = LAT_LON_PARSER.exec(element.getAttribute("onclick"));
 
                 if (matches) {
